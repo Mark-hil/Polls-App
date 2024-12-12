@@ -1,0 +1,52 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'  # Replace with your desired Python version
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set up database
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-contrib
+          sudo service postgresql start
+          psql -c "CREATE DATABASE test_db;" -U postgres
+
+      - name: Run tests
+        env:
+          DB_NAME: test_db
+          DB_USER: postgres
+          DB_PASSWORD: ''
+          DB_HOST: localhost
+          DB_PORT: 5432
+        run: |
+          python manage.py migrate
+          python manage.py test
+
+      - name: Build static files (optional)
+        run: python manage.py collectstatic --no-input
+
+      - name: Deploy to Heroku (replace with your provider's action)
+        uses: your-provider/deploy-action@v1
+        with:
+          api_key: ${{ secrets.DEPLOYMENT_API_KEY }}
+          app_name: your-app-name
+
+      - name: Deploy succeeded (optional)
+        run: echo "Deployment successful!"
